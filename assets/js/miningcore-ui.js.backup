@@ -1,8 +1,8 @@
 // config
-var API = 'http://YOUR-SERVER-IP-OR-DOMAIN:4000/api/'; // API address
-var defaultPool = ''; // Default Pool ID
+var API = 'http://192.168.2.121:4000/api/'; // API address
+var defaultPool = 'acg'; // Default Pool ID
 
-var currentPool = localStorage.getItem('selectedPool') || defaultPool;
+var currentPool = defaultPool;
 
 // private function
 function _formatter(value, decimal, unit) {
@@ -29,15 +29,6 @@ function _formatter(value, decimal, unit) {
     }
 }
 
-
-function updatePoolLogo(poolId) {
-    var logos = {
-        'acg': 'assets/img/faces/face-0.jpg',
-        'dem': 'assets/img/faces/face-1.jpg'
-    };
-    var logo = logos[poolId] || 'assets/img/faces/face-0.jpg';
-    $('#poolLogo').attr('src', logo);
-}
 function loadPools(renderCallback) {
     $('#currentPool b').remove();
     $('#currentPool ul').remove();
@@ -66,8 +57,6 @@ function loadPools(renderCallback) {
             if (data.pools.length > 1) {
                 $('#poolList li a').on('click', function (event) {
                     currentPool = $(event.target).attr('data-id');
-                    localStorage.setItem('selectedPool', currentPool);
-                    updatePoolLogo(currentPool);
                     loadPools(renderCallback);
                 });
             }
@@ -97,7 +86,6 @@ function loadStatsData() {
                     $('#poolHashRate').text(_formatter(value.poolStats.poolHashrate, 5, 'H/s'));
                     $('#networkHashRate').text(_formatter(value.networkStats.networkHashrate, 5, 'H/s'));
                     $('#networkDifficulty').text(_formatter(value.networkStats.networkDifficulty, 5, ''));
-                    $('#lifetimeBlocks').text(value.totalBlocks);
                 }
             });
         })
@@ -224,11 +212,11 @@ function loadDashboardData(walletAddress) {
 }
 
 function loadDashboardWorkerList(walletAddress) {
-    return $.ajax(API + 'pools/' + currentPool + '/miners/' + walletAddress)
+    return $.ajax(API + 'pools/' + currentPool + '/miners/' + walletAddress + '/performance')
         .done(function (data) {
             var workerList = '<thead><th>Name</th><th>Hash Rate</th><th>Share Rate</th></thead><tbody>';
-            if (data.performance && data.performance.workers) {
-                $.each(data.performance.workers, function (index, value) {
+            if (data.length > 0) {
+                $.each(data[0].workers, function (index, value) {
                     workerList += '<tr>';
                     if (index.length === 0) {
                         workerList += '<td>Unnamed</td>';
