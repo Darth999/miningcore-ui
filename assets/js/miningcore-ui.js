@@ -1,5 +1,5 @@
 // config
-var API = 'http://YOUR-SERVER-IP-OR-DOMAIN:4000/api/'; // API address
+var API = 'http://darth999pool.selfhost.co:4000/api/'; // API address
 var defaultPool = ''; // Default Pool ID
 
 var currentPool = localStorage.getItem('selectedPool') || defaultPool;
@@ -93,9 +93,9 @@ function loadStatsData() {
                 if (currentPool === value.id) {
                     //$('#poolShares').text(_formatter(value, 0, ''));
                     //$('#poolBlocks').text(_formatter(value, 0, ''));
-                    $('#poolMiners').text(_formatter(value.poolStats.connectedMiners, 0, ''));
-                    $('#poolHashRate').text(_formatter(value.poolStats.poolHashrate, 5, 'H/s'));
-                    $('#networkHashRate').text(_formatter(value.networkStats.networkHashrate, 5, 'H/s'));
+                    $('#poolMiners').text(_formatter(value.poolStats.connectedMiners || 0, 0, ''));
+                    $('#poolHashRate').text(_formatter(value.poolStats.poolHashrate || 0, 5, 'H/s'));
+                    $('#networkHashRate').text(_formatter(value.networkStats.networkHashrate || 0, 5, 'H/s'));
                     $('#networkDifficulty').text(_formatter(value.networkStats.networkDifficulty, 5, ''));
                     $('#lifetimeBlocks').text(value.totalBlocks);
                 }
@@ -204,13 +204,15 @@ function loadDashboardData(walletAddress) {
         .done(function (data) {
             $('#pendingShares').text(_formatter(data.pendingShares, 0, ''));
             var workerHashRate = 0;
+            if (data.performance && data.performance.workers) {
             $.each(data.performance.workers, function (index, value) {
                 workerHashRate += value.hashrate;
             });
+            }
             $('#minerHashRate').text(_formatter(workerHashRate, 5, 'H/s'));
-            $('#pendingBalance').text(_formatter(data.pendingBalance, 5, ''));
-            $('#paidBalance').text(_formatter(data.totalPaid, 5, ''));
-            $('#lifetimeBalance').text(_formatter(data.pendingBalance + data.totalPaid, 5, ''));
+            $('#pendingBalance').text(_formatter(data.pendingBalance || 0, 5, ''));
+            $('#paidBalance').text(_formatter(data.totalPaid || 0, 5, ''));
+            $('#lifetimeBalance').text(_formatter((data.pendingBalance || 0) + (data.totalPaid || 0), 5, ''));
         })
         .fail(function () {
             $.notify({
@@ -316,6 +318,40 @@ function loadDashboardChart(walletAddress) {
                 type: 'danger',
                 timer: 3000,
             });
+        });
+}
+
+function loadBlocksPerDayChart() {
+    return $.ajax(API + 'pools/' + currentPool + '/blocks?pageSize=500')
+        .done(function (data) {
+            var blocksByDay = {};
+            var today = new Date();
+            for (var i = 29; i >= 0; i--) {
+                var d = new Date(today);
+                d.setDate(d.getDate() - i);
+                var key = d.toISOString().substring(0, 10);
+                blocksByDay[key] = 0;
+            }
+            $.each(data, function (index, block) {
+                if (block.status === 'confirmed') {
+                    var day = block.created.substring(0, 10);
+                    if (blocksByDay.hasOwnProperty(day)) {
+                        blocksByDay[day]++;
+                    }
+                }
+            });
+            var labels = Object.keys(blocksByDay).map(function(d) {
+                return d.substring(5);
+            });
+            var series = [Object.values(blocksByDay)];
+            var data = { labels: labels, series: series };
+            var options = {
+                seriesBarDistance: 10,
+                axisX: { showGrid: false },
+                axisY: { onlyInteger: true },
+                height: '250px'
+            };
+            Chartist.Bar('#chartBlocksPerDay', data, options);
         });
 }
 

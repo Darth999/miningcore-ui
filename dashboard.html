@@ -114,7 +114,7 @@
                 <li>
                     <a href="alerts.html">
                         <i class="ti-bell"></i>
-                        <p>Theme</p>
+                        <p>Settings</p>
                     </a>
                 </li>
             </ul>
@@ -348,7 +348,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-lg-12 col-sm-12">
+                   <div class="col-lg-12 col-sm-12">
                         <div class="card">
                             <div class="header">
                                 <h4 class="title">Hash Rate</h4>
@@ -356,6 +356,23 @@
                             </div>
                             <div class="content">
                                 <div id="chartDashboardHashRate" class="ct-chart"></div>
+                                <div class="footer">
+                                    <hr>
+                                    <div class="stats">
+                                        <i class="ti-reload"></i> Update every minute
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-12 col-sm-12">
+                        <div class="card">
+                            <div class="header">
+                                <h4 class="title">Blocks per Day</h4>
+                                <p class="category">Last 30 days</p>
+                            </div>
+                            <div class="content">
+                                <div id="chartBlocksPerDay" class="ct-chart"></div>
                                 <div class="footer">
                                     <hr>
                                     <div class="stats">
@@ -528,6 +545,7 @@
                     loadDashboardData(addr);
                     setTimeout(function() { loadDashboardWorkerList(addr); }, 2000);
                     setTimeout(function() { loadDashboardChart(addr); }, 4000);
+                    setTimeout(function() { loadBlocksPerDayChart(); }, 5000);
                     setTimeout(function() { loadStatsData(); }, 6000);
                     return load;
                 }(), 60000);
@@ -548,6 +566,7 @@
 
             if (localStorage[currentPool + '-walletAddress']) {
                 $(walletAddress).val(localStorage[currentPool + '-walletAddress']);
+                setTimeout(function() { render(); }, 1000);
             }
         });
         loadPools(renderCallback);
