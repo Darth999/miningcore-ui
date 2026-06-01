@@ -321,7 +321,7 @@ function loadDashboardChart(walletAddress) {
         });
 }
 
-function loadBlocksPerDayChart() {
+function loadBlocksPerDayChart(walletAddress) {
     return $.ajax(API + 'pools/' + currentPool + '/blocks?pageSize=500')
         .done(function (data) {
             var blocksByDay = {};
@@ -333,7 +333,7 @@ function loadBlocksPerDayChart() {
                 blocksByDay[key] = 0;
             }
             $.each(data, function (index, block) {
-                if (block.status === 'confirmed') {
+                if (block.status === 'confirmed' && block.miner === walletAddress) {
                     var day = block.created.substring(0, 10);
                     if (blocksByDay.hasOwnProperty(day)) {
                         blocksByDay[day]++;

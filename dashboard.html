@@ -545,7 +545,7 @@
                     loadDashboardData(addr);
                     setTimeout(function() { loadDashboardWorkerList(addr); }, 2000);
                     setTimeout(function() { loadDashboardChart(addr); }, 4000);
-                    setTimeout(function() { loadBlocksPerDayChart(); }, 5000);
+                    setTimeout(function() { loadBlocksPerDayChart(addr); }, 5000);
                     setTimeout(function() { loadStatsData(); }, 6000);
                     return load;
                 }(), 60000);
