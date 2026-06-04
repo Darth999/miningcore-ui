@@ -97,7 +97,9 @@ function loadStatsData() {
                     $('#poolHashRate').text(_formatter(value.poolStats.poolHashrate || 0, 5, 'H/s'));
                     $('#networkHashRate').text(_formatter(value.networkStats.networkHashrate || 0, 5, 'H/s'));
                     $('#networkDifficulty').text(_formatter(value.networkStats.networkDifficulty, 5, ''));
-                    $('#lifetimeBlocks').text(value.totalBlocks);
+                  //$('#lifetimeBlocks').text(value.totalBlocks);
+                    $('#totalConfirmedBlocks').text(value.totalBlocks || 0);
+                    $('#totalPaid').text(_formatter(value.totalPaid || 0, 5, ''));
                 }
             });
         })
@@ -213,6 +215,7 @@ function loadDashboardData(walletAddress) {
             $('#pendingBalance').text(_formatter(data.pendingBalance || 0, 5, ''));
             $('#paidBalance').text(_formatter(data.totalPaid || 0, 5, ''));
             $('#lifetimeBalance').text(_formatter((data.pendingBalance || 0) + (data.totalPaid || 0), 5, ''));
+            $('#lifetimeBlocks').text((data.totalConfirmedBlocks || 0) + (data.totalPendingBlocks || 0));
         })
         .fail(function () {
             $.notify({
