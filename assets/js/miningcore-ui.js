@@ -325,7 +325,7 @@ function loadDashboardChart(walletAddress) {
 }
 
 function loadBlocksPerDayChart(walletAddress) {
-    return $.ajax(API + 'pools/' + currentPool + '/blocks?pageSize=500')
+    return $.ajax(API + 'pools/' + currentPool + '/blocks?pageSize=10000')
         .done(function (data) {
             var blocksByDay = {};
             var today = new Date();
