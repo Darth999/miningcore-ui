@@ -357,7 +357,39 @@ function loadBlocksPerDayChart(walletAddress) {
             Chartist.Bar('#chartBlocksPerDay', data, options);
         });
 }
-
+function loadPoolBlocksPerDayChart() {
+    return $.ajax(API + 'pools/' + currentPool + '/blocks?pageSize=10000')
+        .done(function (data) {
+            var blocksByDay = {};
+            var today = new Date();
+            for (var i = 29; i >= 0; i--) {
+                var d = new Date(today);
+                d.setDate(d.getDate() - i);
+                var key = d.toISOString().substring(0, 10);
+                blocksByDay[key] = 0;
+            }
+            $.each(data, function (index, block) {
+                if (block.status === 'confirmed') {
+                    var day = block.created.substring(0, 10);
+                    if (blocksByDay.hasOwnProperty(day)) {
+                        blocksByDay[day]++;
+                    }
+                }
+            });
+            var labels = Object.keys(blocksByDay).map(function(d) {
+                return d.substring(5);
+            });
+            var series = [Object.values(blocksByDay)];
+            var data = { labels: labels, series: series };
+            var options = {
+                seriesBarDistance: 10,
+                axisX: { showGrid: false },
+                axisY: { onlyInteger: true },
+                height: '250px'
+            };
+            Chartist.Bar('#chartPoolBlocksPerDay', data, options);
+        });
+}
 function loadMinersList() {
     return $.ajax(API + 'pools/' + currentPool + '/miners')
         .done(function (data) {

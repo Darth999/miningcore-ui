@@ -389,6 +389,21 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="card">
+                            <div class="header">
+                                <h4 class="title">Blocks per Day</h4>
+                                <p class="category">Last 30 days · Pool wide</p>
+                            </div>
+                            <div class="content">
+                                <div id="chartPoolBlocksPerDay" class="ct-chart"></div>
+                                <div class="footer">
+                                    <hr>
+                                    <div class="stats">
+                                        <i class="ti-reload"></i> Update every 10 minutes
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -460,6 +475,10 @@
                 }(), 60000);
                 setInterval(function load() {
                     loadStatsChart();
+                    return load;
+                }(), 600000);
+                setInterval(function load() {
+                    loadPoolBlocksPerDayChart();
                     return load;
                 }(), 600000);
             }
