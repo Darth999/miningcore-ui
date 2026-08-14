@@ -33,7 +33,8 @@ function _formatter(value, decimal, unit) {
 function updatePoolLogo(poolId) {
     var logos = {
         'acg': 'assets/img/faces/face-0.jpg',
-        'dem': 'assets/img/faces/face-1.jpg'
+        'dem': 'assets/img/faces/face-1.jpg',
+        'aur': 'assets/img/faces/face-2.jpg'
     };
     var logo = logos[poolId] || 'assets/img/faces/face-0.jpg';
     $('#poolLogo').attr('src', logo);
