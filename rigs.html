@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meine Miner &#x2013; darth999pool</title>
+<style>
+  body { margin:0; font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:#14161b; color:#e6e6e6; }
+  header { padding:16px 20px; background:#1d2027; border-bottom:1px solid #2c3039; display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  header h1 { margin:0; font-size:20px; flex:1; }
+  header a { color:#8ab4f8; text-decoration:none; }
+  #updated { font-size:12px; color:#888; }
+  .summary { padding:12px 20px; font-size:14px; color:#bbb; }
+  .summary b { color:#fff; }
+  .grid { padding:0 20px 20px; display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:12px; }
+  .card { padding:14px; background:#1d2027; border:1px solid #2c3039; border-radius:8px; }
+  .card h2 { margin:0 0 4px; font-size:16px; display:flex; align-items:center; }
+  .card h2 a { color:inherit; text-decoration:none; }
+  .sub { font-size:12px; color:#888; margin-bottom:10px; }
+  .dot { display:inline-block; width:10px; height:10px; border-radius:5px; margin-right:8px; background:#666; flex:none; }
+  .on .dot { background:#3ecf6a; } .off .dot { background:#e5534b; } .warn .dot { background:#e5a93b; }
+  .pool { padding:8px; border-radius:6px; background:#262a33; margin-bottom:10px; font-size:13px; }
+  .pool .name { font-size:15px; font-weight:bold; color:#fff; }
+  .pool.extern { background:#3a2f1c; }
+  .fb { color:#e5a93b; font-weight:bold; }
+  table { width:100%; font-size:13px; border-collapse:collapse; }
+  td { padding:3px 0; } td.v { text-align:right; color:#fff; }
+  .err { color:#e5534b; font-size:13px; }
+</style>
+</head>
+<body>
+<header>
+  <a href="index.html">&larr; Home</a>
+  <h1>Meine Miner</h1>
+  <span id="updated"></span>
+</header>
+<div class="summary" id="summary">Lade Minerliste &#x2026;</div>
+<div class="grid" id="grid"></div>
+
+<script>
+const REFRESH_MS = 30000;
+
+// Eigene Pool-Ports -> Name
+const POOL_HOSTS = ['darth999pool.selfhost.co', '192.168.2.121'];
+const POOL_PORTS = {
+  9989: 'ACG', 3334: 'ACG (Low-Diff)',
+  9990: 'DEM', 3335: 'DEM (Low-Diff)',
+  9991: 'AUR'
+};
+const DASH = String.fromCharCode(8211), DOT = ' ' + String.fromCharCode(183) + ' ', DEG = ' ' + String.fromCharCode(176) + 'C';
+
+function poolName(url, port) {
+  const host = String(url || '').replace(/^stratum\+tcp:\/\//, '').replace(/\/.*$/, '').toLowerCase();
+  if (POOL_HOSTS.includes(host) && POOL_PORTS[port]) return { name: POOL_PORTS[port], own: true, host };
+  return { name: host || DASH, own: false, host };
+}
+
+function fmtHash(ghs) {
+  if (ghs == null) return DASH;
+  return ghs >= 1000 ? (ghs / 1000).toFixed(2) + ' TH/s' : ghs.toFixed(1) + ' GH/s';
+}
+function fmtUptime(s) {
+  if (!s) return DASH;
+  const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
+  return (d ? d + 'd ' : '') + h + 'h ' + m + 'm';
+}
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+async function getJSON(url) {
+  const r = await fetch(url, { cache: 'no-store' });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
+function renderCard(ip, d, err) {
+  if (err) {
+    return `<div class="card off"><h2><span class="dot"></span>${esc(ip)}</h2>
+      <div class="err">Nicht erreichbar (${esc(err)})</div></div>`;
+  }
+  const fb = !!d.isUsingFallbackStratum;
+  const url = fb ? d.fallbackStratumURL : d.stratumURL;
+  const port = fb ? d.fallbackStratumPort : d.stratumPort;
+  const user = fb ? d.fallbackStratumUser : d.stratumUser;
+  const p = poolName(url, port);
+  const state = d.hashRate > 0 ? (fb ? 'warn' : 'on') : 'off';
+  const model = [d.deviceModel || d.boardVersion, d.ASICModel].filter(Boolean).join(DOT);
+
+  return `<div class="card ${state}">
+    <h2><span class="dot"></span><a href="http://${esc(ip)}/" target="_blank">${esc(d.hostname || ip)}</a></h2>
+    <div class="sub">${esc(ip)}${model ? DOT + esc(model) : ''}${d.version ? DOT + esc(d.version) : ''}</div>
+    <div class="pool ${p.own ? '' : 'extern'}">
+      <div class="name">${esc(p.name)}${fb ? ' <span class="fb">(Fallback)</span>' : ''}</div>
+      <div>${esc(p.host)}:${esc(port)}</div>
+      <div style="color:#888;word-break:break-all">${esc(user)}</div>
+    </div>
+    <table>
+      <tr><td>Hashrate</td><td class="v">${fmtHash(d.hashRate)}</td></tr>
+      <tr><td>Temperatur</td><td class="v">${d.temp != null ? d.temp.toFixed(1) + DEG : DASH}</td></tr>
+      <tr><td>Leistung</td><td class="v">${d.power != null ? d.power.toFixed(1) + ' W' : DASH}</td></tr>
+      <tr><td>Shares ok / abgelehnt</td><td class="v">${d.sharesAccepted ?? DASH} / ${d.sharesRejected ?? DASH}</td></tr>
+      <tr><td>Best Diff</td><td class="v">${esc(d.bestDiff ?? DASH)}</td></tr>
+      <tr><td>Uptime</td><td class="v">${fmtUptime(d.uptimeSeconds)}</td></tr>
+    </table>
+  </div>`;
+}
+
+async function refresh() {
+  let ips;
+  try {
+    ips = await getJSON('miners.json');
+  } catch (e) {
+    document.getElementById('summary').textContent = 'miners.json nicht ladbar (' + e.message + ')';
+    return;
+  }
+
+  const results = await Promise.all(ips.map(async ip => {
+    try { return { ip, d: await getJSON('minerapi/' + ip + '/info') }; }
+    catch (e) { return { ip, err: e.message }; }
+  }));
+
+  results.sort((a, b) => String(a.d?.hostname || a.ip).localeCompare(String(b.d?.hostname || b.ip)));
+  document.getElementById('grid').innerHTML = results.map(r => renderCard(r.ip, r.d, r.err)).join('');
+
+  const online = results.filter(r => r.d && r.d.hashRate > 0);
+  const total = online.reduce((s, r) => s + (r.d.hashRate || 0), 0);
+  const watts = online.reduce((s, r) => s + (r.d.power || 0), 0);
+  document.getElementById('summary').innerHTML =
+    `<b>${online.length}</b> von <b>${results.length}</b> Minern aktiv${DOT}Gesamt <b>${fmtHash(total)}</b>${DOT}<b>${watts.toFixed(0)} W</b>`;
+  document.getElementById('updated').textContent = 'Stand: ' + new Date().toLocaleTimeString('de-DE');
+}
+
+refresh();
+setInterval(refresh, REFRESH_MS);
+</script>
+</body>
+</html>
