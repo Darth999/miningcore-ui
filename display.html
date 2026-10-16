@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Pool">
+<title>darth999pool Display</title>
+<style>
+  /* Bewusst nur CSS, das Safari 9 (iOS 9) sicher kann: Flexbox, vw, keine Grid-Layouts */
+  html, body { height: 100%; margin: 0; padding: 0; }
+  body {
+    background: #142330;
+    color: #ECE7DA;
+    font-family: "Avenir Next", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    -webkit-font-feature-settings: "tnum"; font-feature-settings: "tnum";
+    -webkit-text-size-adjust: 100%;
+    display: -webkit-flex; display: flex;
+    -webkit-flex-direction: column; flex-direction: column;
+    overflow: hidden;
+  }
+  .cond { font-family: "Avenir Next Condensed", "Avenir Next", "Helvetica Neue", Arial, sans-serif; }
+
+  /* Kopfzeile */
+  header {
+    display: -webkit-flex; display: flex;
+    -webkit-align-items: flex-end; align-items: flex-end;
+    -webkit-justify-content: space-between; justify-content: space-between;
+    padding: 14px 22px 10px;
+    border-bottom: 1px solid #2A3D4C;
+  }
+  .brand { font-size: 26px; font-weight: 600; letter-spacing: 0.01em; }
+  .status { font-size: 14px; color: #8C9DAA; margin-top: 2px; }
+  .status.err { color: #F0705F; font-weight: 600; }
+  .clock { text-align: right; }
+  .clock-time { font-size: 44px; font-weight: 500; line-height: 1; }
+  .clock-date { font-size: 14px; color: #8C9DAA; margin-top: 3px; }
+
+  /* Pool-Spalten */
+  #pools {
+    -webkit-flex: 1; flex: 1;
+    display: -webkit-flex; display: flex;
+    min-height: 0;
+    -webkit-transition: opacity .4s; transition: opacity .4s;
+  }
+  .stale #pools, .stale #blocks { opacity: 0.45; }
+  .pool {
+    -webkit-flex: 1; flex: 1;
+    min-width: 0;
+    padding: 14px 20px 10px;
+    border-top: 6px solid #555;
+    border-right: 1px solid #2A3D4C;
+  }
+  .pool:last-child { border-right: 0; }
+  .pool-head { display: -webkit-flex; display: flex; -webkit-align-items: baseline; align-items: baseline; }
+  .sym { font-size: 24px; font-weight: 700; margin-right: 10px; }
+  .pname { font-size: 15px; color: #8C9DAA; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .alert { font-size: 14px; color: #F0705F; font-weight: 600; margin-top: 4px; }
+  .hr { margin-top: 10px; white-space: nowrap; }
+  .hr-val { font-size: 5.6vw; font-weight: 600; line-height: 1; }
+  .hr-unit { font-size: 2vw; color: #B9C3CB; margin-left: 6px; }
+  .hr-label { font-size: 13px; color: #8C9DAA; margin-top: 4px; }
+  .spark { display: block; width: 100%; height: 46px; margin: 10px 0 8px; }
+  .facts { width: 100%; border-collapse: collapse; font-size: 15px; }
+  .facts td { padding: 4px 0; border-top: 1px solid #22364A; }
+  .facts td.v { text-align: right; font-weight: 600; white-space: nowrap; }
+  .facts td.k { color: #8C9DAA; }
+
+  /* Letzte Blöcke */
+  #blocks { padding: 8px 22px 14px; border-top: 1px solid #2A3D4C; }
+  .blocks-title { font-size: 14px; color: #8C9DAA; margin-bottom: 4px; }
+  .btab { width: 100%; border-collapse: collapse; font-size: 15px; }
+  .btab td { padding: 5px 8px 5px 0; border-top: 1px solid #22364A; white-space: nowrap; }
+  .btab .bar { width: 4px; padding: 0; }
+  .btab .bar span { display: block; width: 4px; height: 18px; }
+  .btab .s-confirmed { color: #8FD3A8; }
+  .btab .s-pending { color: #E8C468; }
+  .btab .s-orphaned { color: #F0705F; }
+  .btab .r { text-align: right; padding-right: 0; color: #8C9DAA; }
+  .empty { color: #8C9DAA; font-size: 15px; padding: 6px 0; }
+
+  /* Hochformat: Schrift etwas kleiner, Spalten bleiben nebeneinander */
+  @media (orientation: portrait) {
+    .hr-val { font-size: 7vw; }
+    .hr-unit { font-size: 2.8vw; }
+    .pool { padding: 12px 12px 8px; }
+    .facts, .btab { font-size: 14px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <div class="brand cond">darth999pool</div>
+    <div class="status" id="status">Lade Daten …</div>
+  </div>
+  <div class="clock">
+    <div class="clock-time cond" id="clock">--:--</div>
+    <div class="clock-date" id="date"></div>
+  </div>
+</header>
+
+<div id="pools"></div>
+
+<div id="blocks">
+  <div class="blocks-title">Letzte Blöcke aller Pools</div>
+  <div id="blocklist"><div class="empty">Noch keine Daten.</div></div>
+</div>
+
+<script>
+/* ===== Konfiguration ===================================================== */
+
+// API-Basis: derselbe Wert wie in assets/js/miningcore-ui.js
+var API_BASE = 'http://darth999pool.selfhost.co:4000/api/';
+
+var REFRESH_SEC      = 30;      // Pool-Daten und Blöcke
+var PERF_REFRESH_SEC = 600;     // 24h-Verlauf für die Sparklines
+var BLOCKS_PER_POOL  = 5;       // pro Pool abgefragt
+var BLOCKS_SHOWN     = 6;       // insgesamt angezeigt
+var RELOAD_HOURS     = 6;       // Seite periodisch neu laden (gegen Speicherlecks)
+
+// Farben und Anzeigenamen je Pool-ID (IDs wie in deiner config.json)
+var POOL_STYLE = {
+  dem: { color: '#D9483B' },    // Deutsche eMark
+  acg: { color: '#D8AE45' },    // Aurum Crypto Gold
+  aur: { color: '#4CC7A4' }     // Auroracoin
+};
+var FALLBACK_COLORS = ['#6FA8DC', '#C27BA0', '#93C47D', '#E69138'];
+
+/* ===== Hilfsfunktionen (nur ES5) ========================================= */
+
+function $(id) { return document.getElementById(id); }
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function pad2(n) { return n < 10 ? '0' + n : String(n); }
+
+// Safari 9 kann ISO-Daten mit mehr als 3 Nachkommastellen (wie .NET sie liefert)
+// nicht parsen, daher eigener Parser.
+function parseDate(s) {
+  if (!s) return null;
+  var m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?(Z|[+\-]\d{2}:?\d{2})?$/.exec(s);
+  if (!m) return null;
+  var ms = m[7] ? parseInt((m[7] + '00').substr(0, 3), 10) : 0;
+  var t = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6], ms);
+  if (m[8] && m[8] !== 'Z') {
+    var tz = m[8].replace(':', '');
+    var off = (parseInt(tz.substr(1, 2), 10) * 60 + parseInt(tz.substr(3, 2), 10)) * 60000;
+    t += (tz.charAt(0) === '+' ? -off : off);
+  }
+  return new Date(t);
+}
+
+function decimal(n, digits) {
+  return n.toFixed(digits).replace('.', ',');
+}
+
+function thousands(n) {
+  return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+function scaled(n, units) {
+  var i = 0;
+  n = Number(n) || 0;
+  while (n >= 1000 && i < units.length - 1) { n /= 1000; i++; }
+  var digits = n >= 100 ? 0 : (n >= 10 ? 1 : 2);
+  return { value: decimal(n, digits), unit: units[i] };
+}
+
+function hashrate(h) {
+  return scaled(h, ['H/s', 'kH/s', 'MH/s', 'GH/s', 'TH/s', 'PH/s', 'EH/s']);
+}
+
+function shortNum(n) {
+  var s = scaled(n, ['', 'k', 'M', 'G', 'T', 'P']);
+  return s.value + (s.unit ? ' ' + s.unit : '');
+}
+
+function timeAgo(d) {
+  if (!d) return '–';
+  var sec = Math.floor((new Date().getTime() - d.getTime()) / 1000);
+  if (sec < 60) return 'gerade eben';
+  if (sec < 3600) return 'vor ' + Math.floor(sec / 60) + ' Min.';
+  if (sec < 86400) return 'vor ' + Math.floor(sec / 3600) + ' Std.';
+  var days = Math.floor(sec / 86400);
+  return 'vor ' + days + (days === 1 ? ' Tag' : ' Tagen');
+}
+
+function clockStr(d) { return pad2(d.getHours()) + ':' + pad2(d.getMinutes()); }
+
+function colorFor(id, index) {
+  if (POOL_STYLE[id] && POOL_STYLE[id].color) return POOL_STYLE[id].color;
+  return FALLBACK_COLORS[index % FALLBACK_COLORS.length];
+}
+
+function symbolOf(pool) {
+  var c = pool.coin || {};
+  return c.symbol || c.type || String(pool.id).toUpperCase();
+}
+
+function rawGetJSON(url, cb) {
+  var done = false;
+  var xhr = new XMLHttpRequest();
+  function finish(err, data) {
+    if (done) return;
+    done = true;
+    cb(err, data);
+  }
+  var guard = setTimeout(function () { try { xhr.abort(); } catch (e) {} finish('timeout'); }, 15000);
+  xhr.onreadystatechange = function () {
+    if (xhr.readyState !== 4) return;
+    clearTimeout(guard);
+    if (xhr.status >= 200 && xhr.status < 300) {
+      var data;
+      try { data = JSON.parse(xhr.responseText); } catch (e) { return finish('json'); }
+      finish(null, data);
+    } else {
+      finish('http ' + xhr.status);
+    }
+  };
+  xhr.open('GET', url, true);
+  xhr.send();
+}
+
+// Alle API-Anfragen nacheinander mit kleinem Abstand stellen.
+// Miningcore begrenzt standardmäßig die Anfragen pro Sekunde und IP (HTTP 429),
+// gleichzeitige Anfragen würden sonst teilweise abgewiesen.
+var REQUEST_GAP_MS = 300;
+var requestQueue = [];
+var requestBusy = false;
+
+function getJSON(url, cb) {
+  requestQueue.push({ url: url, cb: cb });
+  pumpQueue();
+}
+
+function pumpQueue() {
+  if (requestBusy || !requestQueue.length) return;
+  requestBusy = true;
+  var job = requestQueue.shift();
+  rawGetJSON(job.url, function (err, data) {
+    setTimeout(function () { requestBusy = false; pumpQueue(); }, REQUEST_GAP_MS);
+    try { job.cb(err, data); } catch (e) { if (window.console) console.error(e); }
+  });
+}
+
+/* ===== Zustand ========================================================== */
+
+var pools = [];
+var perf = {};          // poolId -> [hashrate, ...]
+var lastOk = null;      // Zeitpunkt der letzten erfolgreichen Abfrage
+
+/* ===== Uhr ============================================================== */
+
+var DAYS = ['So.', 'Mo.', 'Di.', 'Mi.', 'Do.', 'Fr.', 'Sa.'];
+var MONTHS = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli',
+              'August', 'September', 'Oktober', 'November', 'Dezember'];
+
+function tickClock() {
+  var d = new Date();
+  $('clock').innerHTML = clockStr(d);
+  $('date').innerHTML = DAYS[d.getDay()] + ', ' + d.getDate() + '. ' + MONTHS[d.getMonth()];
+  updateStatus();
+}
+
+function updateStatus() {
+  var el = $('status');
+  var now = new Date().getTime();
+  var stale = !lastOk || (now - lastOk.getTime()) > REFRESH_SEC * 2500;
+  if (!lastOk) {
+    el.className = 'status';
+    return;
+  }
+  if (stale) {
+    el.className = 'status err';
+    el.innerHTML = 'API nicht erreichbar, Daten von ' + clockStr(lastOk) + ' Uhr';
+    document.body.className = 'stale';
+  } else {
+    el.className = 'status';
+    el.innerHTML = 'Aktualisiert ' + clockStr(lastOk) + ':' + pad2(lastOk.getSeconds()) + ' Uhr';
+    document.body.className = '';
+  }
+}
+
+/* ===== Pools ============================================================ */
+
+function renderPools() {
+  var html = '';
+  for (var i = 0; i < pools.length; i++) {
+    var p = pools[i];
+    var ns = p.networkStats || {};
+    var ps = p.poolStats || {};
+    var color = colorFor(p.id, i);
+    var hr = hashrate(ps.poolHashrate);
+    var peers = ns.connectedPeers || 0;
+
+    html += '<div class="pool" style="border-top-color:' + color + '">';
+    html += '<div class="pool-head"><span class="sym cond" style="color:' + color + '">' +
+            esc(symbolOf(p)) + '</span><span class="pname">' + esc((p.coin && p.coin.name) || p.id) + '</span></div>';
+    if (peers === 0) {
+      html += '<div class="alert">Node hat keine Peers</div>';
+    }
+    html += '<div class="hr cond"><span class="hr-val" style="color:' + color + '">' + hr.value +
+            '</span><span class="hr-unit">' + hr.unit + '</span></div>';
+    html += '<div class="hr-label">Pool-Hashrate, Verlauf 24 Std.</div>';
+    html += '<canvas class="spark" id="spark-' + esc(p.id) + '"></canvas>';
+    html += '<table class="facts">';
+    html += row('Miner', thousands(ps.connectedMiners || 0));
+    var nh = hashrate(ns.networkHashrate);
+    html += row('Netz-Hashrate', nh.value + ' ' + nh.unit);
+    html += row('Difficulty', shortNum(ns.networkDifficulty));
+    html += row('Blockhöhe', thousands(ns.blockHeight || 0));
+    html += row('Letzter Pool-Block', timeAgo(parseDate(p.lastPoolBlockTime)));
+    html += row('Blöcke gesamt', thousands(p.totalBlocks || 0));
+    html += row('Peers', String(peers));
+    html += '</table></div>';
+  }
+  if (!pools.length) html = '<div class="pool"><div class="empty">Keine Pools in der API-Antwort.</div></div>';
+  $('pools').innerHTML = html;
+
+  for (var j = 0; j < pools.length; j++) {
+    drawSpark(pools[j].id, colorFor(pools[j].id, j));
+  }
+}
+
+function row(k, v) {
+  return '<tr><td class="k">' + esc(k) + '</td><td class="v">' + esc(v) + '</td></tr>';
+}
+
+function drawSpark(id, color) {
+  var c = $('spark-' + id);
+  var data = perf[id];
+  if (!c || !c.getContext || !data || data.length < 2) return;
+  var ratio = window.devicePixelRatio || 1;
+  var w = c.offsetWidth, h = c.offsetHeight;
+  c.width = w * ratio;
+  c.height = h * ratio;
+  var ctx = c.getContext('2d');
+  ctx.scale(ratio, ratio);
+
+  var max = 0;
+  for (var i = 0; i < data.length; i++) if (data[i] > max) max = data[i];
+  if (max <= 0) max = 1;
+
+  ctx.beginPath();
+  for (var k = 0; k < data.length; k++) {
+    var x = (k / (data.length - 1)) * w;
+    var y = h - 2 - (data[k] / max) * (h - 6);
+    if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.lineTo(w, h);
+  ctx.lineTo(0, h);
+  ctx.closePath();
+  ctx.globalAlpha = 0.15;
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.globalAlpha = 1;
+}
+
+function loadPools() {
+  getJSON(API_BASE + 'pools', function (err, data) {
+    if (err || !data) {
+      if (!lastOk) {
+        $('status').className = 'status err';
+        $('status').innerHTML = 'API-Fehler (' + esc(err || 'leer') + ') bei ' + esc(API_BASE + 'pools');
+      }
+      updateStatus();
+      return;
+    }
+    pools = data.pools || [];
+    lastOk = new Date();
+    renderPools();
+    updateStatus();
+    loadBlocks();
+    loadMissingPerf();
+  });
+}
+
+var perfLoading = {};   // poolId -> true, solange eine Abfrage läuft
+
+function loadPerfFor(id) {
+  if (perfLoading[id]) return;
+  perfLoading[id] = true;
+  getJSON(API_BASE + 'pools/' + encodeURIComponent(id) + '/performance', function (err, data) {
+    perfLoading[id] = false;
+    if (err || !data) return;          // wird beim nächsten Pool-Update erneut versucht
+    var stats = data.stats || [];
+    var arr = [];
+    for (var k = 0; k < stats.length; k++) arr.push(Number(stats[k].poolHashrate) || 0);
+    perf[id] = arr;
+    renderPools();
+  });
+}
+
+function loadPerf() {
+  for (var i = 0; i < pools.length; i++) loadPerfFor(pools[i].id);
+}
+
+// Pools ohne Verlaufsdaten (z. B. nach Timeout) bei jedem Pool-Update nachladen
+function loadMissingPerf() {
+  for (var i = 0; i < pools.length; i++) {
+    if (!perf[pools[i].id]) loadPerfFor(pools[i].id);
+  }
+}
+
+/* ===== Blöcke =========================================================== */
+
+var STATUS_TEXT = { confirmed: 'bestätigt', pending: 'ausstehend', orphaned: 'verwaist' };
+
+function loadBlocks() {
+  var all = [];
+  var open = pools.length;
+  if (!open) return;
+  for (var i = 0; i < pools.length; i++) {
+    (function (p, index) {
+      var url = API_BASE + 'pools/' + encodeURIComponent(p.id) + '/blocks?page=0&pageSize=' + BLOCKS_PER_POOL;
+      getJSON(url, function (err, data) {
+        if (!err && data) {
+          var list = data.result || data;   // v1 liefert ein Array, v2 ein Objekt mit result
+          if (list && list.length) {
+            for (var k = 0; k < list.length; k++) {
+              list[k]._sym = symbolOf(p);
+              list[k]._color = colorFor(p.id, index);
+              list[k]._date = parseDate(list[k].created);
+              all.push(list[k]);
+            }
+          }
+        }
+        open--;
+        if (open === 0) renderBlocks(all);
+      });
+    })(pools[i], i);
+  }
+}
+
+function renderBlocks(all) {
+  all.sort(function (a, b) {
+    return (b._date ? b._date.getTime() : 0) - (a._date ? a._date.getTime() : 0);
+  });
+  all = all.slice(0, BLOCKS_SHOWN);
+  if (!all.length) {
+    $('blocklist').innerHTML = '<div class="empty">Noch keine Blöcke gefunden.</div>';
+    return;
+  }
+  var html = '<table class="btab">';
+  for (var i = 0; i < all.length; i++) {
+    var b = all[i];
+    var st = String(b.status || '').toLowerCase();
+    var stText = STATUS_TEXT[st] || st;
+    if (st === 'pending' && b.confirmationProgress != null) {
+      stText += ' (' + Math.round(b.confirmationProgress * 100) + ' %)';
+    }
+    html += '<tr>' +
+      '<td class="bar"><span style="background:' + b._color + '"></span></td>' +
+      '<td><b>' + esc(b._sym) + '</b></td>' +
+      '<td>Block ' + thousands(b.blockHeight || 0) + '</td>' +
+      '<td class="s-' + esc(st) + '">' + esc(stText) + '</td>' +
+      '<td>' + (b.reward != null ? decimal(Number(b.reward), 4) + ' ' + esc(b._sym) : '') + '</td>' +
+      '<td class="r">' + timeAgo(b._date) + '</td>' +
+      '</tr>';
+  }
+  html += '</table>';
+  $('blocklist').innerHTML = html;
+}
+
+/* ===== Start ============================================================ */
+
+function safeReload() {
+  // Nur neu laden, wenn die API erreichbar ist. Sonst bliebe Safari auf einer Fehlerseite hängen.
+  getJSON(API_BASE + 'pools', function (err) {
+    if (!err) window.location.reload();
+    else setTimeout(safeReload, 5 * 60 * 1000);
+  });
+}
+
+tickClock();
+setInterval(tickClock, 1000);
+
+loadPools();
+setInterval(loadPools, REFRESH_SEC * 1000);
+
+// Verlauf: erstes Mal direkt nach der ersten Pool-Liste, danach regelmäßig
+setInterval(loadPerf, PERF_REFRESH_SEC * 1000);
+
+setTimeout(safeReload, RELOAD_HOURS * 3600 * 1000);
+</script>
+</body>
+</html>

@@ -170,7 +170,22 @@
                 var statusText = isOnline ? 'Online' : 'Offline';
                 var miners = pool.poolStats ? pool.poolStats.connectedMiners : 0;
                 var hashrate = pool.poolStats ? pool.poolStats.poolHashrate : 0;
-                var stratumPort = pool.ports ? Object.keys(pool.ports)[0] : null;
+                var stratumPort = null, maxDiff = -1;
+                var lowDiffPort = null, minDiff = Infinity;
+                if (pool.ports) {
+                    Object.keys(pool.ports).forEach(function (p) {
+                        var d = pool.ports[p].difficulty || 0;
+                        if (d > maxDiff) { maxDiff = d; stratumPort = p; }
+                        if (d < minDiff) { minDiff = d; lowDiffPort = p; }
+                    });
+                    if (lowDiffPort === stratumPort) { lowDiffPort = null; }
+                }
+                var stratumUrl = stratumPort ? 'stratum+tcp://' + window.location.hostname + ':' + stratumPort : '–';
+                var lowDiffRow = lowDiffPort ?
+                    '<div class="pool-stat-row">' +
+                        '<span class="pool-stat-label">NerdMiner</span>' +
+                        '<span class="pool-stat-value" style="font-size:12px;">stratum+tcp://' + window.location.hostname + ':' + lowDiffPort + '</span>' +
+                    '</div>' : '';
                 var stratumUrl = stratumPort ? 'stratum+tcp://' + window.location.hostname + ':' + stratumPort : 'â€“';
 
                 var card = $('<a>')
@@ -198,7 +213,8 @@
                     '<div class="pool-stat-row">' +
                         '<span class="pool-stat-label">Stratum</span>' +
                         '<span class="pool-stat-value" style="font-size:12px;">' + stratumUrl + '</span>' +
-                    '</div>'
+                    '</div>' +
+                     lowDiffRow
                 );
 
                 grid.append(card);

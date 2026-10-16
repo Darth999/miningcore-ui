@@ -35,6 +35,9 @@
         body.dark-theme table tbody tr:hover { background-color: #0f3460 !important; }
         body.dark-theme table td, body.dark-theme table th { border-color: #0f3460 !important; }
         body.dark-theme .content { background-color: #1a1a2e !important; }
+        body.dark-theme .dropdown-menu { background-color: #16213e !important; border-color: #0f3460 !important; }
+        body.dark-theme .dropdown-menu > li > a { color: #e0e0e0 !important; }
+        body.dark-theme .dropdown-menu > li > a:hover { background-color: #0f3460 !important; color: #ffffff !important; }
         body.dark-theme a { color: #4fc3f7 !important; }
         body.dark-theme .form-control { background-color: #0f3460 !important; border-color: #1a4a8a !important; color: #e0e0e0 !important; }
     </style>
@@ -294,7 +297,7 @@
                         </div>
                     </div>
 
-                    <!-- Pool Info Card -->
+                    <!-- ACG Pool Info Card -->
                     <div class="col-lg-12 col-sm-12">
                         <div class="card">
                             <div class="header">
@@ -387,12 +390,63 @@
                                 <div class="footer">
                                     <hr/>
                                     <div class="stats">
-                                        <i class="ti-info-alt"></i> Pool configuration details
+                                        <i class="ti-info-alt"></i> DEM Pool configuration details
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
+
+                    <!-- AUR Pool Info Card -->
+                    <div class="col-lg-12 col-sm-12">
+                        <div class="card">
+                            <div class="header">
+                                <h4 class="title"><i class="ti-info-alt"></i> Pool Information</h4>
+                                <p class="category">Darth999Pool - Aurora Coin SHA256</p>
+                            </div>
+                            <div class="content">
+                                <table class="table table-hover">
+                                    <tbody>
+                                        <tr>
+                                            <td><strong>Pool Name</strong></td>
+                                            <td>Darth999Pool</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Coin</strong></td>
+                                            <td>Aurora Coin (AUR)</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Algorithm</strong></td>
+                                            <td>SHA256d</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Stratum</strong></td>
+                                            <td>stratum+tcp://darth999pool.selfhost.co:9991</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Payout Scheme</strong></td>
+                                            <td>SOLO</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Minimum Payout</strong></td>
+                                            <td>0.5 AUR</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Pool Fee</strong></td>
+                                            <td>0%</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <div class="footer">
+                                    <hr/>
+                                    <div class="stats">
+                                        <i class="ti-info-alt"></i> AUR Pool configuration
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
 
                 </div>
             </div>

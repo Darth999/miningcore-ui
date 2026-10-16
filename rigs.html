@@ -48,7 +48,6 @@ const POOL_PORTS = {
   9991: 'AUR'
 };
 const DASH = String.fromCharCode(8211), DOT = ' ' + String.fromCharCode(183) + ' ', DEG = ' ' + String.fromCharCode(176) + 'C';
-
 function poolName(url, port) {
   const host = String(url || '').replace(/^stratum\+tcp:\/\//, '').replace(/\/.*$/, '').toLowerCase();
   if (POOL_HOSTS.includes(host) && POOL_PORTS[port]) return { name: POOL_PORTS[port], own: true, host };

@@ -1418,7 +1418,7 @@ textarea.form-control {
   .select.open .dropdown-menu {
     margin-top: -1px; }
   .dropdown-menu > li > a {
-    color: #66615b;
+    color: #000000;
     font-size: 14px;
     padding: 10px 15px;
     -webkit-transition: none;
